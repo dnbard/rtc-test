@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="src/peer.js"></script>
+</head>
+
+<body>
+    <input placeholder="ID" id="userId" />
+    <button id="connectBtn">Connect</button>
+    <br/>
+
+    <input placeholder="Connect To" id="anotherUserId" />
+    <button id="connectToBtn">Connect To</button>
+    <br/>
+
+    <video></video>
+
+    <script>
+        var peer = null;
+
+        document.querySelector('#connectBtn').onclick = function () {
+            var userId = document.querySelector('#userId').value;
+            console.log('Connecting as %s', userId);
+
+            peer = new Peer(userId, {
+                host: "safe-retreat-5295.herokuapp.com",
+                port: "80"
+            });
+
+            peer.on('connection', function (conn) {
+                conn.on('data', function (data) {
+                    // Will print 'hi!'
+                    console.log(data);
+                });
+
+                conn.on('call', function(){
+                    console.log('call');
+                })
+            });
+
+            var getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+            peer.on('call', function (call) {
+                getUserMedia({
+                    video: true,
+                    audio: true
+                }, function (stream) {
+                    call.answer(stream); // Answer the call with an A/V stream.
+                    call.on('stream', function (remoteStream) {
+                        var video = document.querySelector('video');
+                        video.src = window.URL.createObjectURL(remoteStream);
+                        video.onloadedmetadata = function (e) {
+                            video.play();
+                        };
+                    });
+                }, function (err) {
+                    console.log('Failed to get local stream', err);
+                });
+            });
+        };
+
+        document.querySelector('#connectToBtn').onclick = function () {
+            var userId = document.querySelector('#anotherUserId').value;
+            console.log('Connecting to %s', userId);
+
+            var conn = peer.connect(userId);
+            conn.on('open', function(){
+                conn.send('hi!');
+                navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+                navigator.getUserMedia({
+                    video: true,
+                    audio: true
+                }, function (stream) {
+                    var call = peer.call(userId, stream);
+                    call.on('stream', function (remoteStream) {
+                        var video = document.querySelector('video');
+                        video.src = window.URL.createObjectURL(remoteStream);
+                        video.onloadedmetadata = function (e) {
+                            video.play();
+                        };
+                    });
+                }, function (err) {
+                    console.log('Failed to get local stream', err);
+                });
+            });
+
+        };
+    </script>
+</body>
+
+</html>
